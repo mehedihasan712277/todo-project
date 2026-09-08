@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
@@ -15,92 +16,39 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { registerAction, type ActionResult } from "@/actions/auth.actions";
 
-interface FormErrors {
-    name?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-}
+const initialState: ActionResult = { success: false, message: "" };
 
 const RegisterPage = () => {
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
+    const router = useRouter();
+    const [state, formAction, isPending] = useActionState(
+        registerAction,
+        initialState,
+    );
+
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [errors, setErrors] = useState<FormErrors>({});
+    const [confirmError, setConfirmError] = useState<string>();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    useEffect(() => {
+        if (state.success) {
+            toast.success(state.message);
+            router.push(
+                state.role === "admin" ? "/admin/overview" : "/user/todos",
+            );
+        } else if (state.message) {
+            toast.error(state.message);
+        }
+    }, [state, router]);
+
     const handleConfirmPasswordChange = (value: string) => {
         setConfirmPassword(value);
-
-        setErrors((prev) => {
-            const newErrors = { ...prev };
-
-            if (!value) {
-                newErrors.confirmPassword = "Please confirm your password.";
-            } else if (value !== password) {
-                newErrors.confirmPassword = "Passwords do not match.";
-            } else {
-                delete newErrors.confirmPassword;
-            }
-
-            return newErrors;
-        });
-    };
-
-    const validate = (): FormErrors => {
-        const newErrors: FormErrors = {};
-
-        if (!name.trim()) {
-            newErrors.name = "Name is required.";
-        }
-
-        if (!email.trim()) {
-            newErrors.email = "Email is required.";
-        } else {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                newErrors.email = "Please enter a valid email address.";
-            }
-        }
-
-        if (!password) {
-            newErrors.password = "Password is required.";
-        } else if (password.length < 6) {
-            newErrors.password = "Password must be at least 6 characters.";
-        }
-
-        if (!confirmPassword) {
-            newErrors.confirmPassword = "Please confirm your password.";
-        } else if (confirmPassword !== password) {
-            newErrors.confirmPassword = "Passwords do not match.";
-        }
-
-        return newErrors;
-    };
-
-    const handleRegister = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const validationErrors = validate();
-        setErrors(validationErrors);
-
-        if (Object.keys(validationErrors).length > 0) {
-            return;
-        }
-
-        const payload = {
-            name,
-            email,
-            password,
-        };
-
-        console.log("Register payload:", payload);
-
-        // TODO: replace with actual POST API call
-        toast.success("Registration successful!");
+        if (!value) setConfirmError("Please confirm your password.");
+        else if (value !== password) setConfirmError("Passwords do not match.");
+        else setConfirmError(undefined);
     };
 
     return (
@@ -114,20 +62,19 @@ const RegisterPage = () => {
                         Enter your details below to register.
                     </CardDescription>
                 </CardHeader>
-                <form onSubmit={handleRegister} noValidate>
+                <form action={formAction} noValidate>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Name</Label>
                             <Input
                                 id="name"
+                                name="name"
                                 type="text"
                                 placeholder="John Doe"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
                             />
-                            {errors.name && (
+                            {state.errors?.name && (
                                 <p className="text-sm text-destructive">
-                                    {errors.name}
+                                    {state.errors.name}
                                 </p>
                             )}
                         </div>
@@ -136,14 +83,13 @@ const RegisterPage = () => {
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
+                                name="email"
                                 type="email"
                                 placeholder="you@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
                             />
-                            {errors.email && (
+                            {state.errors?.email && (
                                 <p className="text-sm text-destructive">
-                                    {errors.email}
+                                    {state.errors.email}
                                 </p>
                             )}
                         </div>
@@ -153,6 +99,7 @@ const RegisterPage = () => {
                             <div className="relative">
                                 <Input
                                     id="password"
+                                    name="password"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
                                     value={password}
@@ -163,9 +110,7 @@ const RegisterPage = () => {
                                 />
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setShowPassword((prev) => !prev)
-                                    }
+                                    onClick={() => setShowPassword((p) => !p)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                     tabIndex={-1}
                                     aria-label={
@@ -181,9 +126,9 @@ const RegisterPage = () => {
                                     )}
                                 </button>
                             </div>
-                            {errors.password && (
+                            {state.errors?.password && (
                                 <p className="text-sm text-destructive">
-                                    {errors.password}
+                                    {state.errors.password}
                                 </p>
                             )}
                         </div>
@@ -212,7 +157,7 @@ const RegisterPage = () => {
                                 <button
                                     type="button"
                                     onClick={() =>
-                                        setShowConfirmPassword((prev) => !prev)
+                                        setShowConfirmPassword((p) => !p)
                                     }
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                     tabIndex={-1}
@@ -229,16 +174,22 @@ const RegisterPage = () => {
                                     )}
                                 </button>
                             </div>
-                            {errors.confirmPassword && (
+                            {confirmError && (
                                 <p className="text-sm text-destructive">
-                                    {errors.confirmPassword}
+                                    {confirmError}
                                 </p>
                             )}
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4 mt-4">
-                        <Button type="submit" className="w-full">
-                            Register
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={
+                                isPending || !!confirmError || !confirmPassword
+                            }
+                        >
+                            {isPending ? "Creating account..." : "Register"}
                         </Button>
                         <p className="text-sm text-muted-foreground">
                             Already have an account?{" "}

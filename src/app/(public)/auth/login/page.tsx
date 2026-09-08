@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,24 +15,27 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
+import { loginAction, type ActionResult } from "@/actions/auth.actions";
+
+const initialState: ActionResult = { success: false, message: "" };
 
 const LogInPage = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const router = useRouter();
+    const [state, formAction, isPending] = useActionState(
+        loginAction,
+        initialState,
+    );
 
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const payload = {
-            email,
-            password,
-        };
-
-        console.log("Login payload:", payload);
-
-        // TODO: replace with actual POST API call
-        toast.success("Logged in successfully!");
-    };
+    useEffect(() => {
+        if (state.success) {
+            toast.success(state.message);
+            router.push(
+                state.role === "admin" ? "/admin/overview" : "/user/todos",
+            );
+        } else if (state.message) {
+            toast.error(state.message);
+        }
+    }, [state, router]);
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
@@ -42,16 +46,15 @@ const LogInPage = () => {
                         Enter your email and password to access your account.
                     </CardDescription>
                 </CardHeader>
-                <form onSubmit={handleLogin}>
+                <form action={formAction}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
+                                name="email"
                                 type="email"
                                 placeholder="you@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>
@@ -67,17 +70,20 @@ const LogInPage = () => {
                             </div>
                             <Input
                                 id="password"
+                                name="password"
                                 type="password"
                                 placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col gap-4 mt-4">
-                        <Button type="submit" className="w-full">
-                            Log In
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={isPending}
+                        >
+                            {isPending ? "Logging in..." : "Log In"}
                         </Button>
                         <p className="text-sm text-muted-foreground">
                             Don&apos;t have an account?{" "}
