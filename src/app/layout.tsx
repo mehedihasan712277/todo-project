@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/provider/theme-provider";
 import Navbar from "@/components/shared/Navbar";
 import { Toaster } from "@/components/ui/sonner";
+import { TodoContext } from "@/components/provider/TodoContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -44,8 +45,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     enableSystem
                     disableTransitionOnChange
                 >
-                    <Navbar></Navbar>
-                    <div>{children}</div>
+                    <TodoContext>
+                        <Navbar></Navbar>
+                        <div className="mt-24">{children}</div>
+                    </TodoContext>
                 </ThemeProvider>
                 <Toaster />
             </body>
